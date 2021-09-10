@@ -1,5 +1,11 @@
 package table
 
+import (
+	"fmt"
+
+	"github.com/terashin777/assembler/utils"
+)
+
 var Dest dest = dest{}
 
 type dest struct{}
@@ -8,25 +14,25 @@ func (t dest) Name() string {
 	return "dest"
 }
 
-func (t dest) ToBinary(mn string) string {
+func (t dest) ToBinary(mn string) (byte, error) {
 	switch mn {
 	case "":
-		return "000"
+		return utils.StringUtil.ToBinaryNoError("000"), nil
 	case "M":
-		return "001"
+		return utils.StringUtil.ToBinaryNoError("001"), nil
 	case "D":
-		return "010"
+		return utils.StringUtil.ToBinaryNoError("010"), nil
 	case "MD":
-		return "011"
+		return utils.StringUtil.ToBinaryNoError("011"), nil
 	case "A":
-		return "100"
+		return utils.StringUtil.ToBinaryNoError("100"), nil
 	case "AM":
-		return "101"
+		return utils.StringUtil.ToBinaryNoError("101"), nil
 	case "AD":
-		return "110"
+		return utils.StringUtil.ToBinaryNoError("110"), nil
 	case "AMD":
-		return "111"
+		return utils.StringUtil.ToBinaryNoError("111"), nil
 	}
 
-	return ""
+	return 0, fmt.Errorf("not match")
 }

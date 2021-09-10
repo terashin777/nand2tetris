@@ -4,14 +4,16 @@
   // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+
     {
-      "name": "Launch",
+      "name": "assembler",
       "type": "go",
+      "cwd": "/Users/s04956/Repos/Terashin/nand2tetris/projects/06/assembler",
       "request": "launch",
       "mode": "auto",
-      "program": "${file}",
+      "program": "/Users/s04956/Repos/Terashin/nand2tetris/projects/06/assembler/main.go",
       "env": {},
-      "args": ["assemble", "-t", "3", "1"]
+      "args": ["assemble", "/Users/s04956/Repos/Terashin/nand2tetris/projects/06/max/MaxL.asm"]
     }
   ]
 }

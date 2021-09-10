@@ -2,7 +2,9 @@ package modules
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -33,7 +35,16 @@ func NewParser(r io.ReadSeeker) *Parser {
 }
 
 func (p *Parser) Read() (string, error) {
-	p.s.Scan()
+	next := p.s.Scan()
+	if !next {
+		err := p.s.Err()
+		if err != nil {
+			return "", err
+		}
+
+		return "", io.EOF
+	}
+
 	l := p.s.Text()
 	p.cur = strings.TrimSpace(l)
 	if p.cur == "" {
@@ -54,23 +65,51 @@ func (p *Parser) parse() (string, error) {
 	ct := p.commandType()
 
 	var sym string
-	if ct == A_COMMAND || ct == C_COMMAND {
+	if ct == A_COMMAND || ct == L_COMMAND {
 		sym = p.symbol()
 		v, err := strconv.ParseInt(sym, 10, 16)
 		if err != nil {
 			return "", err
 		}
-		return strconv.FormatInt(v, 2), nil
+
+		return fmt.Sprintf("%016s", strconv.FormatInt(v, 2)), nil
 	}
 
-	var dest, comp, jump string
 	if ct == C_COMMAND {
-		dest = p.dest()
-		comp = p.comp()
-		jump = p.jump()
+		return p.parseCCommand()
 	}
 
 	return "", nil
+}
+
+func (p *Parser) parseCCommand() (string, error) {
+	d, err := p.c.Dest(p.dest())
+	if err != nil {
+		return "", err
+	}
+	id := big.NewInt(int64(d))
+	id = id.Lsh(id, 3)
+
+	c, err := p.c.Comp(p.comp())
+	if err != nil {
+		return "", err
+	}
+	ic := big.NewInt(int64(c))
+	ic = ic.Lsh(ic, 6)
+
+	j, err := p.c.Jump(p.jump())
+	if err != nil {
+		return "", err
+	}
+	ij := big.NewInt(int64(j))
+
+	odc := ic.Or(ic, id)
+	o := odc.Or(odc, ij)
+
+	pre, _ := strconv.ParseUint("1110000000000000", 2, 16)
+	ipre := big.NewInt(int64(pre))
+	res := ipre.Or(ipre, o)
+	return fmt.Sprintf("%016s", strconv.FormatInt(res.Int64(), 2)), nil
 }
 
 func (p *Parser) commandType() CommandType {
@@ -113,7 +152,7 @@ func (p *Parser) comp() string {
 	si := 0
 	ei := len(p.cur)
 	if i := strings.IndexByte(p.cur, '='); i != -1 {
-		si = i
+		si = i + 1
 	}
 	if i := strings.IndexByte(p.cur, ';'); i != -1 {
 		ei = i
@@ -124,7 +163,7 @@ func (p *Parser) comp() string {
 
 func (p *Parser) jump() string {
 	if i := strings.IndexByte(p.cur, ';'); i != -1 {
-		return p.cur[i:]
+		return p.cur[i+1:]
 	}
 
 	return ""

@@ -16,28 +16,39 @@ limitations under the License.
 package cmd
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/spf13/cobra"
+	"github.com/terashin777/assembler/modules"
 
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+var (
+	cfgFile        string
+	dest           string
+	assembledExt   = ".hack"
+	defaultDestDir = "same dir as source file"
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "assembler",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Use:   "assemble [file]",
+	Short: "assemble your assembly to hack",
+	Long:  `assemble your assembly to hack.`,
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		err := assemble(args[1], dest)
+		if err != nil {
+			fmt.Printf("assemble is failed because: %s", err)
+			os.Exit(1)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -58,6 +69,7 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().StringVarP(&dest, "dest", "d", defaultDestDir, "destination for assembled file")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -82,4 +94,61 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+func assemble(path, dest string) error {
+	r, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	if dest == defaultDestDir {
+		dest = filepath.Join(filepath.Dir(path), makeSameFileName(path))
+	}
+	fw, err := createDestFile(dest)
+	if err != nil {
+		return err
+	}
+	defer fw.Close()
+
+	p := modules.NewParser(r)
+	w := bufio.NewWriter(fw)
+	for {
+		s, err := p.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if s == "" {
+			continue
+		}
+
+		_, err = w.WriteString(s + "\n")
+		if err != nil {
+			return err
+		}
+	}
+	if err = w.Flush(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createDestFile(dest string) (*os.File, error) {
+	var w *os.File
+	w, err := os.Create(dest)
+	if err != nil {
+		return nil, err
+	}
+
+	return w, nil
+}
+
+func makeSameFileName(path string) string {
+	fn := filepath.Base(path)
+	return fmt.Sprintf("%s%s", strings.Split(fn, ".")[0], assembledExt)
 }
