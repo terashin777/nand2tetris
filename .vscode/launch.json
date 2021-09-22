@@ -13,7 +13,7 @@
       "mode": "auto",
       "program": "/Users/s04956/Repos/Terashin/nand2tetris/projects/06/assembler/main.go",
       "env": {},
-      "args": ["assemble", "/Users/s04956/Repos/Terashin/nand2tetris/projects/06/max/MaxL.asm"]
+      "args": ["assemble", "/Users/s04956/Repos/Terashin/nand2tetris/projects/06/rect/Rect.asm"]
     }
   ]
 }
