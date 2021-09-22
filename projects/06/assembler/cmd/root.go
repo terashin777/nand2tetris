@@ -112,7 +112,21 @@ func assemble(path, dest string) error {
 	}
 	defer fw.Close()
 
-	p := modules.NewParser(r)
+	i, err := fw.Stat()
+	if err != nil {
+		return err
+	}
+	size := i.Size()
+
+	p, err := modules.NewParser(r, size)
+	if err != nil {
+		return err
+	}
+	err = r.Close()
+	if err != nil {
+		return err
+	}
+
 	w := bufio.NewWriter(fw)
 	for {
 		s, err := p.Read()
