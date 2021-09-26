@@ -4,6 +4,16 @@
   // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+  {
+    "name": "vm-translator",
+    "type": "go",
+    "cwd": "/Users/s04956/Repos/Terashin/nand2tetris/projects/07/vm-translator",
+    "request": "launch",
+    "mode": "auto",
+    "program": "/Users/s04956/Repos/Terashin/nand2tetris/projects/07/vm-translator/main.go",
+    "env": {},
+    "args": ["translate", "/Users/s04956/Repos/Terashin/nand2tetris/projects/07/StackArithmetic/SimpleAdd/SimpleAdd.vm"]
+  },
 
     {
       "name": "assembler",

@@ -121,10 +121,8 @@ func parseAll(p *modules.Parser, w *modules.CodeWriter) error {
 		switch ct {
 		case models.C_ARITHMETIC:
 			err = w.WriteArithmetic(p.Arg1())
-		case models.C_PUSH:
-			err = w.WritePushPop("push", p.Arg1(), p.Arg2())
-		case models.C_POP:
-			err = w.WritePushPop("pop", p.Arg1(), p.Arg2())
+		case models.C_PUSH, models.C_POP:
+			err = w.WritePushPop(ct, p.Arg1(), p.Arg2())
 		}
 		if err != nil {
 			return err

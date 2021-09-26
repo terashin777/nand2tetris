@@ -22,14 +22,45 @@ func NewParser(r io.Reader) *Parser {
 }
 
 func (p *Parser) Advance() error {
-	next := p.s.Scan()
-	if !next {
-		return io.EOF
+	t, err := p.scan()
+	if err != nil {
+		return err
 	}
 
-	p.cur = p.s.Text()
-	p.parts = strings.Split(p.cur, " ")
+	p.parts = strings.Split(t, " ")
 	return nil
+}
+
+func (p *Parser) scan() (string, error) {
+	for {
+		next := p.s.Scan()
+		if !next {
+			return "", io.EOF
+		}
+
+		t := p.extractCommand(p.s.Text())
+		if t == "" {
+			continue
+		}
+
+		return t, nil
+	}
+}
+
+func (p *Parser) extractCommand(rt string) string {
+	t := strings.TrimSpace(rt)
+	if p.isCommentRow(t) {
+		return ""
+	}
+	return p.removeComment(t)
+}
+
+func (p *Parser) isCommentRow(t string) bool {
+	return strings.HasPrefix(t, "//")
+}
+
+func (p *Parser) removeComment(t string) string {
+	return strings.TrimRight(strings.Split(t, "//")[0], " ")
 }
 
 func (p *Parser) CommandType() models.CommandType {
@@ -50,7 +81,7 @@ func (p *Parser) isPush() bool {
 }
 
 func (p *Parser) isPop() bool {
-	return len(p.parts) == 3 && p.parts[0] == "push"
+	return len(p.parts) == 3 && p.parts[0] == "pop"
 }
 
 func (p *Parser) isArithmetic() bool {

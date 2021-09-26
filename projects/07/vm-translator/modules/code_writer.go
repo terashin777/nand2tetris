@@ -41,13 +41,19 @@ func (w *CodeWriter) WriteArithmetic(c string) error {
 	return nil
 }
 
-func (w *CodeWriter) WritePushPop(c, seg string, i int) error {
-	p := w.t.TranslatePushPop(c)
+func (w *CodeWriter) WritePushPop(c models.CommandType, seg string, i int) error {
+	p := ""
+	switch c {
+	case models.C_PUSH:
+		p = w.t.TranslatePush(seg, i)
+	case models.C_POP:
+		p = w.t.TranslatePop(seg, i)
+	}
 	if p == "" {
 		return nil
 	}
 
-	_, err := w.bw.Write(p)
+	_, err := w.bw.WriteString(p)
 	if err != nil {
 		return err
 	}
