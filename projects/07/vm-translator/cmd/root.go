@@ -104,7 +104,10 @@ func newCodeWriter(src, dest string) (*modules.CodeWriter, error) {
 		return nil, err
 	}
 
-	return modules.NewCodeWriter(w, &modules.Translator{}), nil
+	return modules.NewCodeWriter(
+		w,
+		modules.NewTranslator(strings.TrimSuffix(filepath.Base(src), filepath.Ext(src))),
+		), nil
 }
 
 func parseAll(p *modules.Parser, w *modules.CodeWriter) error {

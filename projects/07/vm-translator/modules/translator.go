@@ -9,8 +9,20 @@ var memoryMap = map[string]string{
 	"that":     "THAT",
 }
 
+var baseAddrMap = map[string]int{
+	"pointer": 3,
+	"temp":    5,
+}
+
 type Translator struct {
+	fileName       string
 	translateCount int
+}
+
+func NewTranslator(fn string) *Translator {
+	return &Translator{
+		fileName: fn,
+	}
 }
 
 func (t *Translator) TranslateArithmetic(c string) string {
@@ -52,8 +64,7 @@ M=D&M
 AM=M-1
 D=M
 A=A-1
-M=D|M
-`
+M=D|M`
 	case "not":
 		return `@SP
 A=M-1
@@ -76,7 +87,8 @@ D=M
 @SP
 AM=M+1
 A=A-1
-M=D`, i, memoryMap[seg])
+M=D
+`, i, memoryMap[seg])
 	case "constant":
 		return fmt.Sprintf(`@%d
 D=A
@@ -85,6 +97,22 @@ AM=M+1
 A=A-1
 M=D
 `, i)
+	case "pointer", "temp":
+		return fmt.Sprintf(`@%d
+D=M
+@SP
+AM=M+1
+A=A-1
+M=D
+`, baseAddrMap[seg]+i)
+	case "static":
+		return fmt.Sprintf(`@%s.%d
+D=M
+@SP
+AM=M+1
+A=A-1
+M=D
+`, t.fileName, i)
 	default:
 		return ""
 	}
@@ -106,6 +134,20 @@ D=M
 A=M
 M=D
 `, memoryMap[seg], i)
+	case "pointer", "temp":
+		return fmt.Sprintf(`@SP
+AM=M-1
+D=M
+@%d
+M=D
+`, baseAddrMap[seg]+i)
+	case "static":
+		return fmt.Sprintf(`@SP
+AM=M-1
+D=M
+@%s.%d
+M=D
+`, t.fileName, i)
 	default:
 		return ""
 	}
