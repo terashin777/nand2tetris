@@ -2,16 +2,15 @@ package modules
 
 import (
 	"bufio"
-	"github.com/terashin777/vm-translator/models"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/terashin777/vm-translator/models"
 )
 
 type Parser struct {
 	s     *bufio.Scanner
-	ct    models.CommandType
-	cur   string
 	parts []string
 }
 
@@ -71,6 +70,12 @@ func (p *Parser) CommandType() models.CommandType {
 		return models.C_POP
 	case p.isArithmetic():
 		return models.C_ARITHMETIC
+	case p.isLabel():
+		return models.C_LABEL
+	case p.isGoto():
+		return models.C_GOTO
+	case p.isIf():
+		return models.C_IF
 	default:
 		return models.C_NONE
 	}
@@ -86,6 +91,18 @@ func (p *Parser) isPop() bool {
 
 func (p *Parser) isArithmetic() bool {
 	return len(p.parts) == 1
+}
+
+func (p *Parser) isLabel() bool {
+	return len(p.parts) == 2 && p.parts[0] == "label"
+}
+
+func (p *Parser) isGoto() bool {
+	return len(p.parts) == 2 && p.parts[0] == "goto"
+}
+
+func (p *Parser) isIf() bool {
+	return len(p.parts) == 2 && p.parts[0] == "if-goto"
 }
 
 func (p *Parser) Arg1() string {

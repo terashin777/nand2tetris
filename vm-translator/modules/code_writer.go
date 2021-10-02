@@ -2,15 +2,16 @@ package modules
 
 import (
 	"bufio"
-	"github.com/terashin777/vm-translator/models"
 	"io"
 	"os"
+
+	"github.com/terashin777/vm-translator/models"
 )
 
 type CodeWriter struct {
-	w io.WriteCloser
+	w  io.WriteCloser
 	bw *bufio.Writer
-	t models.ITranslator
+	t  models.ITranslator
 }
 
 func NewCodeWriter(w io.WriteCloser, t models.ITranslator) *CodeWriter {
@@ -54,6 +55,48 @@ func (w *CodeWriter) WritePushPop(c models.CommandType, seg string, i int) error
 	}
 
 	_, err := w.bw.WriteString(p)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *CodeWriter) WriteLabel(l string) error {
+	ar := w.t.TranslateLabel(l)
+	if ar == "" {
+		return nil
+	}
+
+	_, err := w.bw.WriteString(ar)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *CodeWriter) WriteGoto(l string) error {
+	ar := w.t.TranslateGoto(l)
+	if ar == "" {
+		return nil
+	}
+
+	_, err := w.bw.WriteString(ar)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *CodeWriter) WriteIf(l string) error {
+	ar := w.t.TranslateIf(l)
+	if ar == "" {
+		return nil
+	}
+
+	_, err := w.bw.WriteString(ar)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,11 @@
 package modules
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/terashin777/vm-translator/utils"
+)
 
 var memoryMap = map[string]string{
 	"local":    "LCL",
@@ -151,6 +156,54 @@ M=D
 	default:
 		return ""
 	}
+}
+
+func (t *Translator) TranslateLabel(l string) string {
+	t.validateLabel(l)
+	return fmt.Sprintf(`(%s)
+`, l)
+}
+
+func (t *Translator) validateLabel(l string) {
+	if t.isStartWithNumber(l) {
+		panic(fmt.Errorf("invalid format label: label is not allowed to start with number"))
+	}
+	if t.isValidLabelChar(l) {
+		panic(fmt.Errorf("invalid format label: allowed label character is alphabet, number, _, . or :"))
+	}
+}
+
+func (t *Translator) isStartWithNumber(l string) bool {
+	return utils.Char.IsNumber(rune(l[0]))
+}
+
+func (t *Translator) isValidLabelChar(l string) bool {
+	for _, r := range l {
+		if !t.isIncludeValidLabelCharOnly(r) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (t *Translator) isIncludeValidLabelCharOnly(r rune) bool {
+	return utils.Char.IsAlphabet(r) || utils.Char.IsNumber(r) || strings.ContainsRune("_.:", r)
+}
+
+func (t *Translator) TranslateGoto(l string) string {
+	return fmt.Sprintf(`@%s
+0;JMP
+`, l)
+}
+
+func (t *Translator) TranslateIf(l string) string {
+	return fmt.Sprintf(`@SP
+AM=M-1
+D=M
+@%s
+D;JNE
+`, l)
 }
 
 func (t *Translator) conditionStatement(jmp string) string {
