@@ -7,21 +7,21 @@
   {
     "name": "vm-translator",
     "type": "go",
-    "cwd": "/Users/s04956/Repos/Terashin/nand2tetris/projects/07/vm-translator",
+    "cwd": "/Users/s04956/Repos/Terashin/nand2tetris/vm-translator",
     "request": "launch",
     "mode": "auto",
-    "program": "/Users/s04956/Repos/Terashin/nand2tetris/projects/07/vm-translator/main.go",
+    "program": "/Users/s04956/Repos/Terashin/nand2tetris/vm-translator/main.go",
     "env": {},
-    "args": ["translate", "/Users/s04956/Repos/Terashin/nand2tetris/projects/07/StackArithmetic/SimpleAdd/SimpleAdd.vm"]
+    "args": ["translate", "/Users/s04956/Repos/Terashin/nand2tetris/projects/08/FunctionCalls/SimpleFunction/SimpleFunction.vm"]
   },
 
     {
       "name": "assembler",
       "type": "go",
-      "cwd": "/Users/s04956/Repos/Terashin/nand2tetris/projects/06/assembler",
+      "cwd": "/Users/s04956/Repos/Terashin/nand2tetris/assembler",
       "request": "launch",
       "mode": "auto",
-      "program": "/Users/s04956/Repos/Terashin/nand2tetris/projects/06/assembler/main.go",
+      "program": "/Users/s04956/Repos/Terashin/nand2tetris/assembler/main.go",
       "env": {},
       "args": ["assemble", "/Users/s04956/Repos/Terashin/nand2tetris/projects/06/rect/Rect.asm"]
     }

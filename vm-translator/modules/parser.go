@@ -9,6 +9,18 @@ import (
 	"github.com/terashin777/vm-translator/models"
 )
 
+var arithmethicCmds = map[string]struct{}{
+	"add": struct{}{},
+	"sub": struct{}{},
+	"neg": struct{}{},
+	"eq":  struct{}{},
+	"gt":  struct{}{},
+	"lt":  struct{}{},
+	"and": struct{}{},
+	"or":  struct{}{},
+	"not": struct{}{},
+}
+
 type Parser struct {
 	s     *bufio.Scanner
 	parts []string
@@ -59,7 +71,7 @@ func (p *Parser) isCommentRow(t string) bool {
 }
 
 func (p *Parser) removeComment(t string) string {
-	return strings.TrimRight(strings.Split(t, "//")[0], " ")
+	return strings.TrimSpace(strings.Split(t, "//")[0])
 }
 
 func (p *Parser) CommandType() models.CommandType {
@@ -76,6 +88,12 @@ func (p *Parser) CommandType() models.CommandType {
 		return models.C_GOTO
 	case p.isIf():
 		return models.C_IF
+	case p.isCall():
+		return models.C_CALL
+	case p.isReturn():
+		return models.C_RETURN
+	case p.isFunction():
+		return models.C_FUNCTION
 	default:
 		return models.C_NONE
 	}
@@ -90,7 +108,12 @@ func (p *Parser) isPop() bool {
 }
 
 func (p *Parser) isArithmetic() bool {
-	return len(p.parts) == 1
+	if !(len(p.parts) == 1) {
+		return false
+	}
+
+	_, ok := arithmethicCmds[p.parts[0]]
+	return ok
 }
 
 func (p *Parser) isLabel() bool {
@@ -103,6 +126,18 @@ func (p *Parser) isGoto() bool {
 
 func (p *Parser) isIf() bool {
 	return len(p.parts) == 2 && p.parts[0] == "if-goto"
+}
+
+func (p *Parser) isCall() bool {
+	return len(p.parts) == 3 && p.parts[0] == "call"
+}
+
+func (p *Parser) isReturn() bool {
+	return len(p.parts) == 1 && p.parts[0] == "return"
+}
+
+func (p *Parser) isFunction() bool {
+	return len(p.parts) == 3 && p.parts[0] == "function"
 }
 
 func (p *Parser) Arg1() string {

@@ -124,6 +124,9 @@ M=D
 }
 
 func (t *Translator) TranslatePop(seg string, i int) string {
+	if i == -1 {
+		fmt.Print("ok")
+	}
 	switch seg {
 	case "local", "argument", "this", "that":
 		return fmt.Sprintf(`@%s
@@ -168,7 +171,7 @@ func (t *Translator) validateLabel(l string) {
 	if t.isStartWithNumber(l) {
 		panic(fmt.Errorf("invalid format label: label is not allowed to start with number"))
 	}
-	if t.isValidLabelChar(l) {
+	if !t.isValidLabelChar(l) {
 		panic(fmt.Errorf("invalid format label: allowed label character is alphabet, number, _, . or :"))
 	}
 }
@@ -204,6 +207,119 @@ D=M
 @%s
 D;JNE
 `, l)
+}
+
+func (t *Translator) TranslateCall(f string, n int) string {
+	ret := fmt.Sprintf("%sRETURN", f)
+	return fmt.Sprintf(`%[1]s
+%[2]s 
+%[3]s
+%[4]s
+%[5]s
+@%[6]d
+D=A
+@5
+D=D-A
+@SP
+D=M-D
+@ARG
+M=D
+@SP
+D=M
+@LCL
+M=D
+@%[7]s
+0;JMP
+(%[8]s)
+`,
+		t.pushEachAddress(ret),
+		t.pushEachAddress("LCL"),
+		t.pushEachAddress("ARG"),
+		t.pushEachAddress("THIS"),
+		t.pushEachAddress("THAT"),
+		n,
+		f,
+		ret,
+	)
+}
+
+func (t *Translator) pushEachAddress(seg string) string {
+	return fmt.Sprintf(`@%s
+D=M
+@SP
+AM=M+1
+A=A-1
+M=D`, seg)
+}
+
+func (t *Translator) TranslateReturn() string {
+	frame := "13"
+	ret := "14"
+	return fmt.Sprintf(`@LCL
+D=M
+@%[1]s
+M=D
+@5
+D=A
+@%[1]s
+A=M-D
+D=M
+@%[2]s
+M=D
+@SP
+AM=M-1
+D=M
+@ARG
+A=M
+M=D
+@ARG
+D=M
+@SP
+M=D+1
+%[3]s
+%[4]s
+%[5]s
+%[6]s
+@%[2]s
+A=M
+0;JMP
+`,
+		frame,
+		ret,
+		t.returnEachSegment("THAT", frame, 1),
+		t.returnEachSegment("THIS", frame, 2),
+		t.returnEachSegment("ARG", frame, 3),
+		t.returnEachSegment("LCL", frame, 4),
+	)
+}
+
+func (t *Translator) returnEachSegment(seg, base string, rel int) string {
+	return fmt.Sprintf(`@%d
+D=A
+@%s
+A=M-D
+D=M
+@%s
+M=D`, rel, base, seg)
+}
+
+func (t *Translator) TranslateFunction(f string, k int) string {
+	loop := fmt.Sprintf("%sLOOP", f)
+	return fmt.Sprintf(`(%s)
+@%d
+D=A
+(%[3]s)
+@%[1]sEND
+D;JEQ
+@SP
+AM=M+1
+A=A-1
+M=0
+D=D-1
+@%[3]s
+0;JMP
+(%[1]sEND)
+`, f, k, loop)
 }
 
 func (t *Translator) conditionStatement(jmp string) string {

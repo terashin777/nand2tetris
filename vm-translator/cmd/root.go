@@ -17,8 +17,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/terashin777/vm-translator/models"
-	"github.com/terashin777/vm-translator/modules"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,6 +24,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/terashin777/vm-translator/models"
+	"github.com/terashin777/vm-translator/modules"
 )
 
 var (
@@ -107,7 +107,7 @@ func newCodeWriter(src, dest string) (*modules.CodeWriter, error) {
 	return modules.NewCodeWriter(
 		w,
 		modules.NewTranslator(strings.TrimSuffix(filepath.Base(src), filepath.Ext(src))),
-		), nil
+	), nil
 }
 
 func parseAll(p *modules.Parser, w *modules.CodeWriter) error {
@@ -126,6 +126,18 @@ func parseAll(p *modules.Parser, w *modules.CodeWriter) error {
 			err = w.WriteArithmetic(p.Arg1())
 		case models.C_PUSH, models.C_POP:
 			err = w.WritePushPop(ct, p.Arg1(), p.Arg2())
+		case models.C_LABEL:
+			err = w.WriteLabel(p.Arg1())
+		case models.C_GOTO:
+			err = w.WriteGoto(p.Arg1())
+		case models.C_IF:
+			err = w.WriteIf(p.Arg1())
+		case models.C_CALL:
+			err = w.WriteCall(p.Arg1(), p.Arg2())
+		case models.C_FUNCTION:
+			err = w.WriteFunction(p.Arg1(), p.Arg2())
+		case models.C_RETURN:
+			err = w.WriteReturn()
 		}
 		if err != nil {
 			return err

@@ -104,6 +104,48 @@ func (w *CodeWriter) WriteIf(l string) error {
 	return nil
 }
 
+func (w *CodeWriter) WriteCall(fn string, n int) error {
+	ar := w.t.TranslateCall(fn, n)
+	if ar == "" {
+		return nil
+	}
+
+	_, err := w.bw.WriteString(ar)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *CodeWriter) WriteReturn() error {
+	ar := w.t.TranslateReturn()
+	if ar == "" {
+		return nil
+	}
+
+	_, err := w.bw.WriteString(ar)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *CodeWriter) WriteFunction(fn string, n int) error {
+	ar := w.t.TranslateFunction(fn, n)
+	if ar == "" {
+		return nil
+	}
+
+	_, err := w.bw.WriteString(ar)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (w *CodeWriter) Close() error {
 	defer w.w.Close()
 	err := w.bw.Flush()
