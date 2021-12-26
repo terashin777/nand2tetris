@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "jack-analyzer",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${fileDirname}",
+      "args": ["compile", "/Users/s04956/Repos/Terashin/nand2tetris/jack-analyzer/testdata"]
+    }
+  ]
+}

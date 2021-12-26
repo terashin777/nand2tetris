@@ -2,44 +2,84 @@ package modules
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/terashin777/vm-translator/models"
+	"github.com/terashin777/vm-translator/utils"
 )
 
 var arithmethicCmds = map[string]struct{}{
-	"add": struct{}{},
-	"sub": struct{}{},
-	"neg": struct{}{},
-	"eq":  struct{}{},
-	"gt":  struct{}{},
-	"lt":  struct{}{},
-	"and": struct{}{},
-	"or":  struct{}{},
-	"not": struct{}{},
+	"add": {},
+	"sub": {},
+	"neg": {},
+	"eq":  {},
+	"gt":  {},
+	"lt":  {},
+	"and": {},
+	"or":  {},
+	"not": {},
 }
 
 type Parser struct {
+	cur   int
+	fns   []string
+	r     io.ReadCloser
 	s     *bufio.Scanner
 	parts []string
+	f     string
 }
 
-func NewParser(r io.Reader) *Parser {
-	return &Parser{
-		s: bufio.NewScanner(r),
+func NewParser(fns []string) (*Parser, error) {
+	if len(fns) == 0 {
+		return nil, fmt.Errorf("no file")
 	}
+
+	return &Parser{
+		cur: -1,
+		fns: fns,
+	}, nil
+}
+
+func (p *Parser) SetFunctionName(f string) {
+	p.f = f
 }
 
 func (p *Parser) Advance() error {
 	t, err := p.scan()
 	if err != nil {
+		p.r.Close()
 		return err
 	}
 
 	p.parts = strings.Split(t, " ")
 	return nil
+}
+
+func (p *Parser) NextFile() (string, error) {
+	p.cur++
+	if len(p.fns) < p.cur+1 {
+		return "", io.EOF
+	}
+
+	return p.initByCurrentFile(p.fns[p.cur])
+}
+
+func (p *Parser) initByCurrentFile(src string) (string, error) {
+	fn := p.fns[p.cur]
+	f, err := os.Open(fn)
+	if err != nil {
+		return "", err
+	}
+
+	p.r = f
+	p.s = bufio.NewScanner(f)
+	p.parts = nil
+	return utils.Filepath.FileNameWithoutExt(filepath.Base(fn)), nil
 }
 
 func (p *Parser) scan() (string, error) {

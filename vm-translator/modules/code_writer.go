@@ -2,8 +2,8 @@ package modules
 
 import (
 	"bufio"
+	"fmt"
 	"io"
-	"os"
 
 	"github.com/terashin777/vm-translator/models"
 )
@@ -12,19 +12,28 @@ type CodeWriter struct {
 	w  io.WriteCloser
 	bw *bufio.Writer
 	t  models.ITranslator
+	f  string
 }
 
 func NewCodeWriter(w io.WriteCloser, t models.ITranslator) *CodeWriter {
-	return &CodeWriter{w, bufio.NewWriter(w), t}
+	return &CodeWriter{
+		w:  w,
+		bw: bufio.NewWriter(w),
+		t:  t,
+	}
 }
 
-func (w *CodeWriter) SetFileName(fn string) error {
-	f, err := os.Open(fn)
+func (w *CodeWriter) SetFunctionName(n string) {
+	w.f = n
+	w.t.SetFunctionName(n)
+}
+
+func (w *CodeWriter) WriteInit() error {
+	_, err := w.bw.WriteString(w.t.TranslateInit())
 	if err != nil {
 		return err
 	}
 
-	w.w = f
 	return nil
 }
 
@@ -63,7 +72,7 @@ func (w *CodeWriter) WritePushPop(c models.CommandType, seg string, i int) error
 }
 
 func (w *CodeWriter) WriteLabel(l string) error {
-	ar := w.t.TranslateLabel(l)
+	ar := w.t.TranslateLabel(fmt.Sprintf("%s$%s", w.f, l))
 	if ar == "" {
 		return nil
 	}
@@ -77,7 +86,7 @@ func (w *CodeWriter) WriteLabel(l string) error {
 }
 
 func (w *CodeWriter) WriteGoto(l string) error {
-	ar := w.t.TranslateGoto(l)
+	ar := w.t.TranslateGoto(fmt.Sprintf("%s$%s", w.f, l))
 	if ar == "" {
 		return nil
 	}
@@ -91,7 +100,7 @@ func (w *CodeWriter) WriteGoto(l string) error {
 }
 
 func (w *CodeWriter) WriteIf(l string) error {
-	ar := w.t.TranslateIf(l)
+	ar := w.t.TranslateIf(fmt.Sprintf("%s$%s", w.f, l))
 	if ar == "" {
 		return nil
 	}
@@ -143,6 +152,7 @@ func (w *CodeWriter) WriteFunction(fn string, n int) error {
 		return err
 	}
 
+	w.f = fn
 	return nil
 }
 

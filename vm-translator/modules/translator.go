@@ -20,14 +20,26 @@ var baseAddrMap = map[string]int{
 }
 
 type Translator struct {
-	fileName       string
-	translateCount int
+	fileName    string
+	symbolCount int
 }
 
-func NewTranslator(fn string) *Translator {
+func NewTranslator() *Translator {
 	return &Translator{
-		fileName: fn,
+		symbolCount: 0,
 	}
+}
+
+func (t *Translator) SetFunctionName(n string) {
+	t.fileName = n
+}
+
+func (t *Translator) TranslateInit() string {
+	return fmt.Sprintf(`@256
+D=A
+@SP
+M=D
+%s`, t.translateCall("Sys.init", 0))
 }
 
 func (t *Translator) TranslateArithmetic(c string) string {
@@ -83,44 +95,38 @@ M=!M
 func (t *Translator) TranslatePush(seg string, i int) string {
 	switch seg {
 	case "local", "argument", "this", "that":
-		return fmt.Sprintf(`@%d
-D=A
-@%s
-A=M
+		return fmt.Sprintf(`@%s
+D=M
+@%d
 A=D+A
 D=M
-@SP
-AM=M+1
-A=A-1
-M=D
-`, i, memoryMap[seg])
+%s
+`, memoryMap[seg], i, t.push())
 	case "constant":
 		return fmt.Sprintf(`@%d
 D=A
-@SP
-AM=M+1
-A=A-1
-M=D
-`, i)
+%s
+`, i, t.push())
 	case "pointer", "temp":
 		return fmt.Sprintf(`@%d
 D=M
-@SP
-AM=M+1
-A=A-1
-M=D
-`, baseAddrMap[seg]+i)
+%s
+`, baseAddrMap[seg]+i, t.push())
 	case "static":
 		return fmt.Sprintf(`@%s.%d
 D=M
-@SP
-AM=M+1
-A=A-1
-M=D
-`, t.fileName, i)
+%s
+`, t.fileName, i, t.push())
 	default:
 		return ""
 	}
+}
+
+func (t *Translator) push() string {
+	return `@SP
+AM=M+1
+A=A-1
+M=D`
 }
 
 func (t *Translator) TranslatePop(seg string, i int) string {
@@ -172,7 +178,7 @@ func (t *Translator) validateLabel(l string) {
 		panic(fmt.Errorf("invalid format label: label is not allowed to start with number"))
 	}
 	if !t.isValidLabelChar(l) {
-		panic(fmt.Errorf("invalid format label: allowed label character is alphabet, number, _, . or :"))
+		panic(fmt.Errorf("invalid format label: allowed label character is alphabet, number, _, ., : or $"))
 	}
 }
 
@@ -191,7 +197,7 @@ func (t *Translator) isValidLabelChar(l string) bool {
 }
 
 func (t *Translator) isIncludeValidLabelCharOnly(r rune) bool {
-	return utils.Char.IsAlphabet(r) || utils.Char.IsNumber(r) || strings.ContainsRune("_.:", r)
+	return utils.Char.IsAlphabet(r) || utils.Char.IsNumber(r) || strings.ContainsRune("_.:$", r)
 }
 
 func (t *Translator) TranslateGoto(l string) string {
@@ -202,7 +208,9 @@ func (t *Translator) TranslateGoto(l string) string {
 
 func (t *Translator) TranslateIf(l string) string {
 	return fmt.Sprintf(`@SP
-AM=M-1
+M=M-1
+@SP
+A=M
 D=M
 @%s
 D;JNE
@@ -210,7 +218,12 @@ D;JNE
 }
 
 func (t *Translator) TranslateCall(f string, n int) string {
-	ret := fmt.Sprintf("%sRETURN", f)
+	return t.translateCall(f, n)
+}
+
+func (t *Translator) translateCall(f string, n int) string {
+	t.symbolCount++
+	ret := fmt.Sprintf("%s_RETURN%d", f, t.symbolCount)
 	return fmt.Sprintf(`%[1]s
 %[2]s 
 %[3]s
@@ -219,7 +232,7 @@ func (t *Translator) TranslateCall(f string, n int) string {
 @%[6]d
 D=A
 @5
-D=D-A
+D=D+A
 @SP
 D=M-D
 @ARG
@@ -232,24 +245,27 @@ M=D
 0;JMP
 (%[8]s)
 `,
-		t.pushEachAddress(ret),
-		t.pushEachAddress("LCL"),
-		t.pushEachAddress("ARG"),
-		t.pushEachAddress("THIS"),
-		t.pushEachAddress("THAT"),
+		t.pushLabelAddress(ret),
+		t.pushSegmentAddress("LCL"),
+		t.pushSegmentAddress("ARG"),
+		t.pushSegmentAddress("THIS"),
+		t.pushSegmentAddress("THAT"),
 		n,
 		f,
 		ret,
 	)
 }
 
-func (t *Translator) pushEachAddress(seg string) string {
+func (t *Translator) pushLabelAddress(label string) string {
+	return fmt.Sprintf(`@%s
+D=A
+%s`, label, t.push())
+}
+
+func (t *Translator) pushSegmentAddress(seg string) string {
 	return fmt.Sprintf(`@%s
 D=M
-@SP
-AM=M+1
-A=A-1
-M=D`, seg)
+%s`, seg, t.push())
 }
 
 func (t *Translator) TranslateReturn() string {
@@ -260,9 +276,7 @@ D=M
 @%[1]s
 M=D
 @5
-D=A
-@%[1]s
-A=M-D
+A=D-A
 D=M
 @%[2]s
 M=D
@@ -294,17 +308,22 @@ A=M
 }
 
 func (t *Translator) returnEachSegment(seg, base string, rel int) string {
-	return fmt.Sprintf(`@%d
-D=A
-@%s
-A=M-D
+	return fmt.Sprintf(`@%s
+D=M
+@%d
+A=D-A
 D=M
 @%s
-M=D`, rel, base, seg)
+M=D`, base, rel, seg)
 }
 
 func (t *Translator) TranslateFunction(f string, k int) string {
-	loop := fmt.Sprintf("%sLOOP", f)
+	if k == 0 {
+		return fmt.Sprintf(`(%s)
+`, f)
+	}
+
+	loop := fmt.Sprintf("%s_LOOP", f)
 	return fmt.Sprintf(`(%s)
 @%d
 D=A
@@ -323,8 +342,8 @@ D=D-1
 }
 
 func (t *Translator) conditionStatement(jmp string) string {
-	t.translateCount++
-	lb := fmt.Sprintf("%s_TRUE_%d", jmp, t.translateCount)
+	t.symbolCount++
+	lb := fmt.Sprintf("%s_TRUE%d", jmp, t.symbolCount)
 	return fmt.Sprintf(`@SP
 AM=M-1
 D=M

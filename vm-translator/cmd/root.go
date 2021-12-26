@@ -32,6 +32,7 @@ var (
 	cfgFile        string
 	dest           string
 	assemblyExt    = ".asm"
+	vmExt          = ".vm"
 	defaultDestDir = "same dir as source file"
 )
 
@@ -80,24 +81,72 @@ func initConfig() {
 }
 
 func translate(src, dest string) error {
+	fns, isDir, err := getFiles(src)
+	if err != nil {
+		return err
+	}
+	if isDir {
+		dest = src
+	}
+
 	cw, err := newCodeWriter(src, dest)
 	if err != nil {
 		return err
 	}
 	defer cw.Close()
 
-	r, err := os.Open(src)
+	p, err := modules.NewParser(fns)
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	return parseAll(p, cw, isDir)
+}
 
-	return parseAll(modules.NewParser(r), cw)
+func getFiles(src string) ([]string, bool, error) {
+	fi, err := os.Stat(src)
+	if err != nil {
+		return nil, false, err
+	}
+	if fi.IsDir() {
+		fs, err := getFilesInDir(src)
+		if err != nil {
+			return nil, false, err
+		}
+
+		return fs, true, nil
+	}
+
+	return []string{
+		src,
+	}, false, nil
+}
+
+func getFilesInDir(dir string) ([]string, error) {
+	fs, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	fns := []string{}
+	for _, f := range fs {
+		fn := f.Name()
+		if isVM(fn) {
+			fns = append(fns, filepath.Join(dir, fn))
+		}
+	}
+
+	return fns, nil
+}
+
+func isVM(fn string) bool {
+	return filepath.Ext(fn) == vmExt
 }
 
 func newCodeWriter(src, dest string) (*modules.CodeWriter, error) {
 	if dest == defaultDestDir {
 		dest = filepath.Join(filepath.Dir(src), makeSameFileName(src))
+	} else {
+		dest = filepath.Join(dest, makeSameFileName(src))
 	}
 	w, err := os.Create(dest)
 	if err != nil {
@@ -106,15 +155,34 @@ func newCodeWriter(src, dest string) (*modules.CodeWriter, error) {
 
 	return modules.NewCodeWriter(
 		w,
-		modules.NewTranslator(strings.TrimSuffix(filepath.Base(src), filepath.Ext(src))),
+		modules.NewTranslator(),
 	), nil
 }
 
-func parseAll(p *modules.Parser, w *modules.CodeWriter) error {
+func parseAll(p *modules.Parser, w *modules.CodeWriter, isDir bool) error {
+	err := nextFile(p, w)
+	if err == io.EOF {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	if isDir {
+		w.WriteInit()
+	}
 	for {
 		err := p.Advance()
 		if err == io.EOF {
-			return nil
+			err := nextFile(p, w)
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+
+			continue
 		}
 		if err != nil {
 			return err
@@ -148,4 +216,14 @@ func parseAll(p *modules.Parser, w *modules.CodeWriter) error {
 func makeSameFileName(path string) string {
 	fn := filepath.Base(path)
 	return fmt.Sprintf("%s%s", strings.Split(fn, ".")[0], assemblyExt)
+}
+
+func nextFile(p *modules.Parser, w *modules.CodeWriter) error {
+	fn, err := p.NextFile()
+	if err != nil {
+		return err
+	}
+
+	w.SetFunctionName(fn)
+	return nil
 }

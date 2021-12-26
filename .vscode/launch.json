@@ -4,17 +4,26 @@
   // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
-  {
-    "name": "vm-translator",
-    "type": "go",
-    "cwd": "/Users/s04956/Repos/Terashin/nand2tetris/vm-translator",
-    "request": "launch",
-    "mode": "auto",
-    "program": "/Users/s04956/Repos/Terashin/nand2tetris/vm-translator/main.go",
-    "env": {},
-    "args": ["translate", "/Users/s04956/Repos/Terashin/nand2tetris/projects/08/FunctionCalls/SimpleFunction/SimpleFunction.vm"]
-  },
-
+    {
+      "name": "jack-analyzer",
+      "type": "go",
+      "cwd": "/Users/s04956/Repos/Terashin/nand2tetris/jack-analyzer",
+      "request": "launch",
+      "mode": "auto",
+      "program": "/Users/s04956/Repos/Terashin/nand2tetris/jack-analyzer/main.go",
+      "env": {},
+      "args": ["compile", "/Users/s04956/Repos/Terashin/nand2tetris/projects/10/ArrayTest"]
+    },
+    {
+      "name": "vm-translator",
+      "type": "go",
+      "cwd": "/Users/s04956/Repos/Terashin/nand2tetris/vm-translator",
+      "request": "launch",
+      "mode": "auto",
+      "program": "/Users/s04956/Repos/Terashin/nand2tetris/vm-translator/main.go",
+      "env": {},
+      "args": ["translate", "/Users/s04956/Repos/Terashin/nand2tetris/projects/08/FunctionCalls/FibonacciElement"]
+    },
     {
       "name": "assembler",
       "type": "go",
