@@ -77,3 +77,16 @@ func (t TokenType) IsKeyword() bool {
 func (t *Token) IsPrimitiveType() bool {
 	return t.Type.IsKeyword() && Keywords[t.Value].IsPrimitiveType()
 }
+
+func (t *Token) IsKeywordOf(k KeywordType) bool {
+	return t.Type.IsKeyword() && Keywords[t.Value] == k
+}
+
+func (t *Token) IsSymbolOf(s string) bool {
+	_, ok := Symbols[t.Value]
+	if ok && t.Type == SYMBOL && t.Value == s {
+		return true
+	}
+
+	return false
+}
