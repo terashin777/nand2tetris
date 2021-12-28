@@ -7,7 +7,7 @@
       "request": "launch",
       "mode": "auto",
       "program": "${fileDirname}",
-      "args": ["compile", "/Users/s04956/Repos/Terashin/nand2tetris/jack-analyzer/testdata"]
+      "args": ["compile", "/Users/s04956/Repos/Terashin/nand2tetris/projects/10/ArrayTest"]
     }
   ]
 }

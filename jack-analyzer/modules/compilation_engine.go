@@ -10,6 +10,12 @@ import (
 	"github.com/terashin777/jack-analyzer/utils"
 )
 
+var (
+	predefinedClasses = []string{
+		"Array",
+	}
+)
+
 type CompilationEngine struct {
 	t          *JackTokenizer
 	w          models.WriteSeekCloser
@@ -24,7 +30,7 @@ func NewCompilationEngine(src, dest string, t *JackTokenizer) (*CompilationEngin
 		t:          t,
 		indent:     0,
 		indentUnit: 2,
-		classNames: []string{},
+		classNames: predefinedClasses,
 	}, nil
 }
 
@@ -84,7 +90,7 @@ func (e *CompilationEngine) CompileClass() error {
 }
 
 func (e *CompilationEngine) compileClass() error {
-	err := e.writeToken(e.t.CurToken())
+	err := e.writeToken()
 	if err != nil {
 		return err
 	}
@@ -94,7 +100,7 @@ func (e *CompilationEngine) compileClass() error {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("{"))
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("{"))
 	if err != nil {
 		return err
 	}
@@ -102,15 +108,21 @@ func (e *CompilationEngine) compileClass() error {
 	for {
 		k := e.t.Keyword()
 		if k.IsSubRoutine() {
-			e.CompileSubroutine()
+			err = e.CompileSubroutine()
+			if err != nil {
+				return err
+			}
 		} else if k.IsClassVarDec() {
-			e.CompileClassVarDec()
+			err = e.CompileClassVarDec()
+			if err != nil {
+				return err
+			}
 		} else {
 			break
 		}
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("}"))
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("}"))
 	if err != nil {
 		return err
 	}
@@ -119,9 +131,8 @@ func (e *CompilationEngine) compileClass() error {
 }
 
 func (e *CompilationEngine) writeClassName() error {
-	t := e.t.CurToken()
-	e.classNames = append(e.classNames, t.Value)
-	err := e.writeTokenWithValidate(t, e.makeTokenTypeValidator(models.IDENTIFIER))
+	e.classNames = append(e.classNames, e.t.CurToken().Value)
+	err := e.writeTokenWithValidate(e.makeTokenTypeValidator(models.IDENTIFIER))
 	if err != nil {
 		return err
 	}
@@ -134,7 +145,7 @@ func (e *CompilationEngine) CompileClassVarDec() error {
 }
 
 func (e *CompilationEngine) compileClassVarDec() error {
-	err := e.writeToken(e.t.CurToken())
+	err := e.writeToken()
 	if err != nil {
 		return err
 	}
@@ -148,12 +159,12 @@ func (e *CompilationEngine) compileClassVarDec() error {
 }
 
 func (e *CompilationEngine) writeVarNames() error {
-	err := e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator(","))
+	err := e.writeTokenWithValidate(e.makeSymbolValidator(","))
 	if err != nil {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeTokenTypeValidator(models.IDENTIFIER))
+	err = e.writeTokenWithValidate(e.makeTokenTypeValidator(models.IDENTIFIER))
 	if err != nil {
 		return err
 	}
@@ -166,7 +177,7 @@ func (e *CompilationEngine) CompileSubroutine() error {
 }
 
 func (e *CompilationEngine) compileSubroutine() error {
-	err := e.writeToken(e.t.CurToken())
+	err := e.writeToken()
 	if err != nil {
 		return err
 	}
@@ -176,17 +187,22 @@ func (e *CompilationEngine) compileSubroutine() error {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeTokenTypeValidator(models.IDENTIFIER))
+	err = e.writeTokenWithValidate(e.makeTokenTypeValidator(models.IDENTIFIER))
 	if err != nil {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("("))
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("("))
 	if err != nil {
 		return err
 	}
 
 	err = e.CompileParameterList()
+	if err != nil {
+		return err
+	}
+
+	err = e.writeTokenWithValidate(e.makeSymbolValidator(")"))
 	if err != nil {
 		return err
 	}
@@ -204,14 +220,16 @@ func (e *CompilationEngine) CompileSubroutineBody() error {
 }
 
 func (e *CompilationEngine) compileSubroutineBody() error {
-	err := e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("{"))
+	err := e.writeTokenWithValidate(e.makeSymbolValidator("{"))
 	if err != nil {
 		return err
 	}
 
-	err = e.CompileVarDec()
-	if err != nil {
-		return err
+	for e.t.CurToken().IsKeywordOf(models.VAR) {
+		err = e.CompileVarDec()
+		if err != nil {
+			return err
+		}
 	}
 
 	err = e.CompileStatements()
@@ -219,7 +237,7 @@ func (e *CompilationEngine) compileSubroutineBody() error {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("}"))
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("}"))
 	if err != nil {
 		return err
 	}
@@ -232,7 +250,7 @@ func (e *CompilationEngine) CompileVarDec() error {
 }
 
 func (e *CompilationEngine) compileVarDec() error {
-	err := e.writeTokenWithValidate(e.t.CurToken(), e.makeKeywordValidator(models.VAR))
+	err := e.writeTokenWithValidate(e.makeKeywordValidator(models.VAR))
 	if err != nil {
 		return err
 	}
@@ -251,15 +269,11 @@ func (e *CompilationEngine) compileVarDecBody() error {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeTokenTypeValidator(models.IDENTIFIER))
+	err = e.writeTokenWithValidate(e.makeTokenTypeValidator(models.IDENTIFIER))
 	if err != nil {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeTokenTypeValidator(models.IDENTIFIER))
-	if err != nil {
-		return err
-	}
 	for !e.t.CurToken().IsSymbolOf(";") {
 		err := e.writeVarNames()
 		if err != nil {
@@ -267,7 +281,7 @@ func (e *CompilationEngine) compileVarDecBody() error {
 		}
 	}
 
-	err = e.writeToken(e.t.CurToken())
+	err = e.writeToken()
 	if err != nil {
 		return err
 	}
@@ -323,12 +337,12 @@ func (e *CompilationEngine) CompileLet() error {
 }
 
 func (e *CompilationEngine) compileLet() error {
-	err := e.writeToken(e.t.CurToken())
+	err := e.writeToken()
 	if err != nil {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeTokenTypeValidator(models.IDENTIFIER))
+	err = e.writeTokenWithValidate(e.makeTokenTypeValidator(models.IDENTIFIER))
 	if err != nil {
 		return err
 	}
@@ -338,17 +352,17 @@ func (e *CompilationEngine) compileLet() error {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("="))
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("="))
 	if err != nil {
 		return err
 	}
 
-	err = e.writeToken(e.t.CurToken())
+	err = e.writeToken()
 	if err != nil {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator(";"))
+	err = e.writeTokenWithValidate(e.makeSymbolValidator(";"))
 	if err != nil {
 		return err
 	}
@@ -357,20 +371,19 @@ func (e *CompilationEngine) compileLet() error {
 }
 
 func (e *CompilationEngine) compileLetArrayExpression() error {
-	t := e.t.CurToken()
-	if t.IsSymbolOf("[") {
-		err := e.writeToken(t)
+	if e.t.CurToken().IsSymbolOf("[") {
+		err := e.writeToken()
 		if err != nil {
 			return err
 		}
 
 		// TODO: expression
-		err = e.writeToken(e.t.CurToken())
+		err = e.writeToken()
 		if err != nil {
 			return err
 		}
 
-		err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("]"))
+		err = e.writeTokenWithValidate(e.makeSymbolValidator("]"))
 		if err != nil {
 			return err
 		}
@@ -384,23 +397,23 @@ func (e *CompilationEngine) CompileIf() error {
 }
 
 func (e *CompilationEngine) compileIf() error {
-	err := e.writeToken(e.t.CurToken())
+	err := e.writeToken()
 	if err != nil {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("("))
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("("))
 	if err != nil {
 		return err
 	}
 
 	// TODO: expression
-	err = e.writeToken(e.t.CurToken())
+	err = e.writeToken()
 	if err != nil {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator(")"))
+	err = e.writeTokenWithValidate(e.makeSymbolValidator(")"))
 	if err != nil {
 		return err
 	}
@@ -410,18 +423,8 @@ func (e *CompilationEngine) compileIf() error {
 		return err
 	}
 
-	err = e.compileIfElse()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (e *CompilationEngine) compileIfElse() error {
-	t := e.t.CurToken()
-	if t.IsKeywordOf(models.ELSE) {
-		err := e.compileIfBody()
+	if e.t.CurToken().IsKeywordOf(models.ELSE) {
+		err = e.compileIfElse()
 		if err != nil {
 			return err
 		}
@@ -430,16 +433,13 @@ func (e *CompilationEngine) compileIfElse() error {
 	return nil
 }
 
-func (e *CompilationEngine) compileIfBody() error {
-	err := e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("{"))
+func (e *CompilationEngine) compileIfElse() error {
+	err := e.writeToken()
 	if err != nil {
 		return err
 	}
-	err = e.CompileStatements()
-	if err != nil {
-		return err
-	}
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeSymbolValidator("}"))
+
+	err = e.compileIfBody()
 	if err != nil {
 		return err
 	}
@@ -447,10 +447,113 @@ func (e *CompilationEngine) compileIfBody() error {
 	return nil
 }
 
+func (e *CompilationEngine) compileIfBody() error {
+	err := e.writeTokenWithValidate(e.makeSymbolValidator("{"))
+	if err != nil {
+		return err
+	}
+	err = e.CompileStatements()
+	if err != nil {
+		return err
+	}
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("}"))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *CompilationEngine) CompileWhile() error {
+	return e.wrap("whileStatement", e.compileWhile)
+}
+
+func (e *CompilationEngine) compileWhile() error {
+	err := e.writeToken()
+	if err != nil {
+		return err
+	}
+
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("("))
+	if err != nil {
+		return err
+	}
+
+	// TODO: expression
+	err = e.writeToken()
+	if err != nil {
+		return err
+	}
+
+	err = e.writeTokenWithValidate(e.makeSymbolValidator(")"))
+	if err != nil {
+		return err
+	}
+
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("{"))
+	if err != nil {
+		return err
+	}
+
+	err = e.compileStatements()
+	if err != nil {
+		return err
+	}
+
+	err = e.writeTokenWithValidate(e.makeSymbolValidator("}"))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *CompilationEngine) CompileDo() error {
+	return e.wrap("doStatement", e.compileDo)
+}
+
+func (e *CompilationEngine) compileDo() error {
+	// TODO: subroutineCall
+	err := e.writeToken()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *CompilationEngine) CompileReturn() error {
+	return e.wrap("returnStatement", e.compileReturn)
+}
+
+func (e *CompilationEngine) compileReturn() error {
+	err := e.writeToken()
+	if err != nil {
+		return err
+	}
+
+	if !e.t.CurToken().IsSymbolOf(";") {
+		// TODO: expression
+		err = e.writeToken()
+		if err != nil {
+			return err
+		}
+	}
+
+	err = e.writeToken()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (e *CompilationEngine) compileType() error {
+	return e.writeToken()
+
 	t := e.t.CurToken()
+	// TODO: 同一フォルダ内でクラスが定義されているかチェックできるようにしたい
 	if t.IsPrimitiveType() || e.isClassDefined(t.Value) {
-		return e.writeToken(e.t.CurToken())
+		return e.writeToken()
 	}
 
 	return e.invalidTypeError(t.Value)
@@ -482,12 +585,12 @@ func (e *CompilationEngine) compileParameterList() error {
 }
 
 func (e *CompilationEngine) writeParameterList() error {
-	err := e.writeToken(e.t.CurToken())
+	err := e.writeToken()
 	if err != nil {
 		return err
 	}
 
-	err = e.writeTokenWithValidate(e.t.CurToken(), e.makeTokenTypeValidator(models.IDENTIFIER))
+	err = e.writeTokenWithValidate(e.makeTokenTypeValidator(models.IDENTIFIER))
 	if err != nil {
 		return err
 	}
@@ -526,46 +629,34 @@ func (e *CompilationEngine) makeTokenTypeValidator(tt models.TokenType) func(t *
 }
 
 func (e *CompilationEngine) invalidTypeError(v string) error {
-	return fmt.Errorf("'%s' is not type or not defined", v)
+	return fmt.Errorf("'%s' is not type or not defined\n %s", v, utils.Stack(2))
 }
 
 func (e *CompilationEngine) invalidTokenTypeError(k models.TokenType) error {
-	return fmt.Errorf("token is not token type '%s'", models.TokenTypeString[k])
+	return fmt.Errorf("token is not token type '%s'\n %s", models.TokenTypeString[k], utils.Stack(2))
 }
 
 func (e *CompilationEngine) invalidSymbolError(v string) error {
-	return fmt.Errorf("token is not symbol '%s'", v)
+	return fmt.Errorf("token is not symbol '%s'\n %s", v, utils.Stack(2))
 }
 
 func (e *CompilationEngine) invalidKeywordError(v string, k models.KeywordType) error {
-	return fmt.Errorf("token '%s' is not keyword '%s'", v, models.KeywordTypeString[k])
+	return fmt.Errorf("token '%s' is not keyword '%s'\n %s", v, models.KeywordTypeString[k], utils.Stack(2))
 }
 
-func (e *CompilationEngine) isClass(t models.KeywordType) bool {
-	return t == models.CLASS
-}
-
-func (e *CompilationEngine) isSubRoutine(t models.KeywordType) bool {
-	return t == models.CONSTRUCTOR || t == models.FUNCTION || t == models.METHOD
-}
-
-func (e *CompilationEngine) isClassVarDec(t models.KeywordType) bool {
-	return t == models.STATIC || t == models.FIELD
-}
-
-func (e *CompilationEngine) writeTokenWithValidate(t *models.Token, validate func(t *models.Token) error) error {
-	if err := validate(t); err != nil {
+func (e *CompilationEngine) writeTokenWithValidate(validate func(t *models.Token) error) error {
+	if err := validate(e.t.CurToken()); err != nil {
 		return err
 	}
 
-	if err := e.writeToken(t); err != nil {
+	if err := e.writeToken(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (e *CompilationEngine) writeToken(t *models.Token) error {
-	_, err := e.w.Write([]byte(e.indentString() + models.WrapTokenTag(t) + "\n"))
+func (e *CompilationEngine) writeToken() error {
+	_, err := e.w.Write([]byte(e.indentString() + models.WrapTokenTag(e.t.CurToken()) + "\n"))
 	if err != nil {
 		return err
 	}
